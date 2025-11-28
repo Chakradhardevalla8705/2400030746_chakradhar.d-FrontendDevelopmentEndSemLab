@@ -1,11 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <title>Registration & Courses</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    deployed
+
+<h2>User Registration</h2>
+<input id="name" placeholder="Enter Name">
+<input id="email" placeholder="Enter Email">
+<button onclick="register()">Register</button>
+
+<hr>
+
+<h2>Add Course</h2>
+<input id="course" placeholder="Course Name">
+<button onclick="addCourse()">Add Course</button>
+
+<hr>
+
+<h2>Saved Courses</h2>
+<ul id="list"></ul>
+
+<script>
+  const vscode = acquireVsCodeApi();
+
+  function register() {
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+
+    vscode.postMessage({
+      command: "register",
+      data: { name, email }
+    });
+  }
+
+  function addCourse() {
+    const course = document.getElementById("course").value;
+    vscode.postMessage({
+      command: "addCourse",
+      data: course
+    });
+  }
+
+  window.addEventListener("message", (event) => {
+    const data = event.data;
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    data.courses.forEach(c => {
+      const li = document.createElement("li");
+      li.textContent = c;
+      list.appendChild(li);
+    });
+  });
+
+  vscode.postMessage({ command: "getData" });
+</script>
+
 </body>
 </html>
