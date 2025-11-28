@@ -1,73 +1,53 @@
 const vscode = require("vscode");
-const fs = require("fs");
-const path = require("path");
 
 function activate(context) {
-  const dataFile = path.join(context.globalStorageUri.fsPath, "data.json");
+  let data = {
+    user: null,
+    courses: []
+  };
 
-  // Create storage file if not exists
-  if (!fs.existsSync(context.globalStorageUri.fsPath)) {
-    fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
-  }
-  if (!fs.existsSync(dataFile)) {
-    fs.writeFileSync(dataFile, JSON.stringify({ user: null, courses: [] }, null, 2));
-  }
+  // Main command
+  let disposable = vscode.commands.registerCommand("extension.openFeatures", async () => {
 
-  // Load data
-  const loadData = () => JSON.parse(fs.readFileSync(dataFile));
+    // If user not registered → register first
+    if (!data.user) {
+      const name = await vscode.window.showInputBox({ prompt: "Enter your name" });
+      const email = await vscode.window.showInputBox({ prompt: "Enter your email" });
 
-  // Save data
-  const saveData = (data) => fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+      data.user = { name, email };
+      vscode.window.showInformationMessage("Registration successful!");
+    }
 
-  // Command: Open Panel
-  const openPanel = vscode.commands.registerCommand("extension.openPanel", () => {
-    const panel = vscode.window.createWebviewPanel(
-      "registerCourses",
-      "Registration & Courses",
-      vscode.ViewColumn.One,
-      { enableScripts: true }
-    );
+    // After registration show menu
+    while (true) {
+      const option = await vscode.window.showQuickPick(
+        ["Add Course", "View Courses", "Exit"],
+        { placeHolder: "Choose an option" }
+      );
 
-    const htmlPath = path.join(context.extensionPath, "webview", "index.html");
-    let html = fs.readFileSync(htmlPath).toString();
-
-    panel.webview.html = html;
-
-    // handle messages from webview
-    panel.webview.onDidReceiveMessage((msg) => {
-      const db = loadData();
-
-      if (msg.command === "register") {
-        db.user = msg.data;
-        saveData(db);
-        vscode.window.showInformationMessage("User Registered!");
+      if (option === "Add Course") {
+        const course = await vscode.window.showInputBox({ prompt: "Enter course name" });
+        if (course) {
+          data.courses.push(course);
+          vscode.window.showInformationMessage("Course added: " + course);
+        }
       }
 
-      if (msg.command === "addCourse") {
-        db.courses.push(msg.data);
-        saveData(db);
-        vscode.window.showInformationMessage("Course Added!");
+      else if (option === "View Courses") {
+        if (data.courses.length === 0) {
+          vscode.window.showInformationMessage("No courses added yet.");
+        } else {
+          vscode.window.showQuickPick(data.courses, { placeHolder: "Your Courses" });
+        }
       }
 
-      if (msg.command === "getData") {
-        panel.webview.postMessage(loadData());
+      else if (option === "Exit") {
+        break;
       }
-    });
+    }
   });
 
-  // Command: Add Course (quick input)
-  const addCourseCommand = vscode.commands.registerCommand("extension.addCourse", async () => {
-    const course = await vscode.window.showInputBox({ prompt: "Enter course name" });
-    if (!course) return;
-
-    const db = loadData();
-    db.courses.push(course);
-    saveData(db);
-
-    vscode.window.showInformationMessage("Course Added: " + course);
-  });
-
-  context.subscriptions.push(openPanel, addCourseCommand);
+  context.subscriptions.push(disposable);
 }
 
 function deactivate() {}
